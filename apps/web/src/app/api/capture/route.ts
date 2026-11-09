@@ -148,3 +148,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message || "Failed to process quick capture" }, { status: 500 });
   }
 }
+

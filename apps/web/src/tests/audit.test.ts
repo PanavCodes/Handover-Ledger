@@ -138,3 +138,4 @@ describe("Head-Anchored Cryptographic Audit Log", () => {
     expect(verification.message).toContain("Tail truncation detected");
   });
 });
+

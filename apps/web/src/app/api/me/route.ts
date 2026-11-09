@@ -11,3 +11,4 @@ export async function GET() {
     allPersonas: Object.values(DEMO_PERSONAS),
   });
 }
+

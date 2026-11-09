@@ -162,3 +162,4 @@ alter table claim_rejections enable row level security;
 alter table briefs enable row level security;
 alter table audit_log enable row level security;
 alter table audit_head_anchors enable row level security;
+

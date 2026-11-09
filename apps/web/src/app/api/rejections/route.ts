@@ -5,3 +5,4 @@ export async function GET() {
   const rejections = Store.getRejections();
   return NextResponse.json({ rejections });
 }
+

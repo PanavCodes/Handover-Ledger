@@ -5,3 +5,4 @@ export async function GET() {
   const result = runLeakCanaryAudit();
   return NextResponse.json(result);
 }
+

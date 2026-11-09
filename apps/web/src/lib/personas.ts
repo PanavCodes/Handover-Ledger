@@ -53,3 +53,4 @@ export const DEMO_PERSONAS: Record<PersonaRole, PersonaProfile> = {
 };
 
 export const DEFAULT_WORKSPACE_ID = "aurora-rover-workspace-demo-2025";
+

@@ -152,3 +152,4 @@ $ pnpm --filter web test
 ---
 
 *Handover Ledger — Making Tacit Institutional Knowledge Machine-Verifiable and Cryptographically Evident.*
+

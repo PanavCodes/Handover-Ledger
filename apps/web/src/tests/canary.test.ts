@@ -53,3 +53,4 @@ describe("Access Choke Point & Leak Canary Defense Matrix", () => {
     expect(failures).toHaveLength(0);
   });
 });
+

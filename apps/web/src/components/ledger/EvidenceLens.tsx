@@ -497,3 +497,4 @@ export function EvidenceLens({ claim, onClose, onClaimUpdated }: EvidenceLensPro
     </div>
   );
 }
+

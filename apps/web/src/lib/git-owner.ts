@@ -243,3 +243,4 @@ export function analyzeGitOwnership(commits: CommitEntry[]): GitDerivedClaimsRes
     busFactorRisks,
   };
 }
+
