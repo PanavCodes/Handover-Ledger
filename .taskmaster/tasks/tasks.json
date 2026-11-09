@@ -1,0 +1,117 @@
+{
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Foundation, Environment & Spec Constitution",
+      "complexity": 2,
+      "status": "done",
+      "subtasks": [
+        {"id": "1.1", "title": "Scaffold Next.js 14 App Router with TypeScript & Tailwind", "status": "done"},
+        {"id": "1.2", "title": "Configure Serena memory file and Gravitas contracts", "status": "done"},
+        {"id": "1.3", "title": "Configure signed-cookie persona session management (/api/session)", "status": "done"},
+        {"id": "1.4", "title": "Install UI dependencies and establish Ink & Evidence tokens", "status": "done"}
+      ]
+    },
+    {
+      "id": "1.5",
+      "title": "Reference Repositories Ingestion & Asset Adaptation",
+      "complexity": 2,
+      "status": "done",
+      "subtasks": [
+        {"id": "1.5.1", "title": "Shallow clone reference repos to references/external/", "status": "done"},
+        {"id": "1.5.2", "title": "Inspect & adapt file filters from repomix", "status": "done"},
+        {"id": "1.5.3", "title": "Inspect & adapt Cerberus head-anchor audit formulas", "status": "done"},
+        {"id": "1.5.4", "title": "Inspect & adapt juricode/citefact quote snapping and word diff", "status": "done"},
+        {"id": "1.5.5", "title": "Inspect & adapt truckfactor/git-tribe line ownership heuristic", "status": "done"}
+      ]
+    },
+    {
+      "id": "2",
+      "title": "Database Schema & Security RLS Lockdown",
+      "complexity": 3,
+      "status": "done",
+      "subtasks": [
+        {"id": "2.1", "title": "Author Supabase migrations for all 8 core tables", "status": "done"},
+        {"id": "2.2", "title": "Apply deny-all RLS policies to enforce server-only access", "status": "done"},
+        {"id": "2.3", "title": "Build idempotent Aurora Rover seed script with canary tokens", "status": "done"}
+      ]
+    },
+    {
+      "id": "3",
+      "title": "Deterministic Verifier & Anti-Hallucination Engine",
+      "complexity": 4,
+      "status": "done",
+      "subtasks": [
+        {"id": "3.1", "title": "Write TDD test suite for quote matching & character offsets", "status": "done"},
+        {"id": "3.2", "title": "Implement normalise_with_map and 1:1 character index tracker", "status": "done"},
+        {"id": "3.3", "title": "Implement quote snapping algorithm (juricode pattern)", "status": "done"},
+        {"id": "3.4", "title": "Implement word-level hallucination diff (citefact pattern)", "status": "done"},
+        {"id": "3.5", "title": "Implement secret regex guard and rejection persistence", "status": "done"}
+      ]
+    },
+    {
+      "id": "4",
+      "title": "AI Extraction Pipeline & Deterministic Git Ownership",
+      "complexity": 4,
+      "status": "done",
+      "subtasks": [
+        {"id": "4.1", "title": "Implement lib/git-owner.ts for deterministic commit ownership", "status": "done"},
+        {"id": "4.2", "title": "Build GitHub REST ingestion with tree/commit/PR filters", "status": "done"},
+        {"id": "4.3", "title": "Implement Claude 3.5 Sonnet extraction with record_claims tool", "status": "done"},
+        {"id": "4.4", "title": "Create client-driven batched extraction route (/api/extract)", "status": "done"},
+        {"id": "4.5", "title": "Implement Quick Capture endpoint (/api/capture)", "status": "done"}
+      ]
+    },
+    {
+      "id": "5",
+      "title": "Access Choke Point & Leak Canary Defense",
+      "complexity": 4,
+      "status": "done",
+      "subtasks": [
+        {"id": "5.1", "title": "Implement lib/access.ts strict visibility filtering", "status": "done"},
+        {"id": "5.2", "title": "Write automated Canary Test Suite (Core vs Coord)", "status": "done"},
+        {"id": "5.3", "title": "Expose GET /api/canary endpoint for live UI matrix", "status": "done"}
+      ]
+    },
+    {
+      "id": "6",
+      "title": "Ink & Evidence UI & The 6 WOW Features",
+      "complexity": 5,
+      "status": "done",
+      "subtasks": [
+        {"id": "6.1", "title": "Build Landing (/) and Persona Selection Hub (/demo)", "status": "done"},
+        {"id": "6.2", "title": "Build Evidence Lens side-by-side highlighted span viewer", "status": "done"},
+        {"id": "6.3", "title": "Build Interactive Leak Canary Grid UI with live sweep", "status": "done"},
+        {"id": "6.4", "title": "Implement View-As Simulator with withheld claims counter", "status": "done"},
+        {"id": "6.5", "title": "Build Bus-Factor Knowledge Constellation (React Flow)", "status": "done"},
+        {"id": "6.6", "title": "Build Animated Handover Readiness Gauge (0-100)", "status": "done"},
+        {"id": "6.7", "title": "Integrate Command Palette (Cmd+K) and keyboard triage", "status": "done"},
+        {"id": "6.8", "title": "Build Leaver Attestation & Sign-off Interface", "status": "done"}
+      ]
+    },
+    {
+      "id": "7",
+      "title": "Handover Brief & Multi-Format Exporters",
+      "complexity": 3,
+      "status": "done",
+      "subtasks": [
+        {"id": "7.1", "title": "Build /brief with 4 core sections & 30-day roadmap", "status": "done"},
+        {"id": "7.2", "title": "Implement Markdown exporter with footnoted verbatim citations", "status": "done"},
+        {"id": "7.3", "title": "Implement JSON exporter and print-to-PDF styles", "status": "done"},
+        {"id": "7.4", "title": "Implement Agent-Ready Export (HANDOVER.md / AGENTS.md)", "status": "done"},
+        {"id": "7.5", "title": "Implement Leaver What I Built portfolio summary", "status": "done"}
+      ]
+    },
+    {
+      "id": "8",
+      "title": "Incognito Audit, Hardening & Submission",
+      "complexity": 2,
+      "status": "done",
+      "subtasks": [
+        {"id": "8.1", "title": "Execute 100% incognito verification test script", "status": "done"},
+        {"id": "8.2", "title": "Validate gitleaks and remove any secret remnants", "status": "done"},
+        {"id": "8.3", "title": "Compile production build and pass 16/16 Vitest tests", "status": "done"}
+      ]
+    }
+  ]
+}

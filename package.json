@@ -1,0 +1,15 @@
+{
+  "name": "handover-ledger",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@12.18.0",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "start": "pnpm --filter web start",
+    "test": "pnpm --filter web test",
+    "lint": "pnpm --filter web lint",
+    "typecheck": "pnpm --filter web typecheck"
+  }
+}
+
