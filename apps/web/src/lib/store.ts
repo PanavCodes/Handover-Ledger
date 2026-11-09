@@ -319,6 +319,25 @@ function createInitialStore() {
       created_at: "2025-02-14T10:40:00Z",
       updated_at: "2025-02-14T10:40:00Z",
     },
+    {
+      id: "claim-10",
+      workspace_id: workspace.id,
+      type: "risk",
+      title: "CANbus Baud Rate Contradiction: 115200 vs 57600 baud",
+      statement: "Architecture doc states CANbus runs at 115200 baud, but motor controller firmware header defines CAN_BAUD_RATE as 57600.",
+      subject_key: "hardware:canbus_baud",
+      assertion_value: "115200 vs 57600 Conflict",
+      status: "conflicting",
+      basis: "inferred",
+      inference_note: "Contradiction detected: architecture.md specifies 115200 baud, while firmware asserts 57600 baud.",
+      confidence: 0.91,
+      review_state: "pending",
+      origin: "extracted",
+      captured_by: "System Conflict Detector",
+      version: 1,
+      created_at: "2025-02-14T10:45:00Z",
+      updated_at: "2025-02-14T10:45:00Z",
+    },
   ];
 
   const citations: Citation[] = [
@@ -456,6 +475,21 @@ function createInitialStore() {
       source_sensitivity: "restricted",
       source_allowed_scopes: ["coordinator"],
       created_at: "2025-02-14T10:40:00Z",
+    },
+    {
+      id: "cit-10",
+      claim_id: "claim-10",
+      document_id: "doc-arch",
+      quote: "we decided to adopt MQTT over TLS for all telemetry streams",
+      start_offset: 147,
+      end_offset: 206,
+      verified: true,
+      support_score: 0.95,
+      document_path: "docs/architecture.md",
+      source_name: "aurora-rover/firmware-and-docs (GitHub)",
+      source_sensitivity: "team",
+      source_allowed_scopes: [],
+      created_at: "2025-02-14T10:45:00Z",
     },
   ];
 
