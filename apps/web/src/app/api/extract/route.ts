@@ -16,8 +16,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let requestedDocId: string | undefined;
+  try {
+    const body = await req.json();
+    requestedDocId = body?.documentId;
+  } catch {
+    // Empty POST body allowed
+  }
+
   const allDocs = Store.getDocuments();
-  const pendingDocs = allDocs.filter((d) => d.extract_state === "pending");
+  const pendingDocs = requestedDocId
+    ? allDocs.filter((d) => d.id === requestedDocId && d.extract_state === "pending")
+    : allDocs.filter((d) => d.extract_state === "pending");
 
   if (pendingDocs.length === 0) {
     return NextResponse.json({
@@ -25,17 +35,21 @@ export async function POST(req: NextRequest) {
       proposed: 0,
       verified: 0,
       rejected: 0,
+      processedDocs: 0,
       message: "No pending documents to extract",
     });
   }
 
-  // Batch process 1-3 documents
+  // Batch process up to 3 documents per request
   const batch = pendingDocs.slice(0, 3);
   const result = await extractClaimsFromDocuments(batch);
 
   const workspace = Store.getWorkspace();
   const sources = Store.getSources();
   const sourceMap = new Map(sources.map((s) => [s.id, s]));
+  const actor =
+    session.persona === "lead" ? "Dr. Meera Iyer (Lead)" : "Rahul Mehta (Leaver)";
+  const now = new Date().toISOString();
 
   // Persist verified claims
   for (const item of result.verifiedClaims) {
@@ -54,10 +68,10 @@ export async function POST(req: NextRequest) {
       confidence: item.claim.confidence,
       review_state: "pending",
       origin: "extracted",
-      captured_by: session.persona === "lead" ? "Dr. Meera Iyer (Lead)" : "Rahul Mehta (Leaver)",
+      captured_by: actor,
       version: 1,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
     };
 
     const newCitations: Citation[] = item.citations.map((c) => {
@@ -76,7 +90,7 @@ export async function POST(req: NextRequest) {
         source_name: src?.name,
         source_sensitivity: src?.sensitivity,
         source_allowed_scopes: src?.allowed_scopes,
-        created_at: new Date().toISOString(),
+        created_at: now,
       };
     });
 
@@ -92,22 +106,32 @@ export async function POST(req: NextRequest) {
       proposed: rej.proposed,
       reason: rej.reason,
       diff_analysis: rej.diff_analysis,
-      created_at: new Date().toISOString(),
+      created_at: now,
     });
   }
 
-  // Mark batch as done
+  // Mark batch as done using persisted Store mutation
   for (const doc of batch) {
-    doc.extract_state = "done";
+    Store.markDocumentState(doc.id, "done");
   }
 
-  const remaining = pendingDocs.length - batch.length;
-
-  return NextResponse.json({
-    remaining: Math.max(0, remaining),
+  Store.appendAudit(actor, "extraction_batch_completed", `batch:${batch.map((d) => d.id).join(",")}`, {
+    processedDocs: batch.length,
     proposed: result.proposedCount,
     verified: result.verifiedCount,
     rejected: result.rejectedCount,
   });
-}
 
+  const remaining = Math.max(
+    0,
+    Store.getDocuments().filter((d) => d.extract_state === "pending").length
+  );
+
+  return NextResponse.json({
+    remaining,
+    proposed: result.proposedCount,
+    verified: result.verifiedCount,
+    rejected: result.rejectedCount,
+    processedDocs: batch.length,
+  });
+}

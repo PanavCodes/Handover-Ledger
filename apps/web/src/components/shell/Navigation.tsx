@@ -9,6 +9,7 @@ import {
   Network,
   FileText,
   UploadCloud,
+  MessageSquareMore,
   ShieldCheck,
   History,
   Users,
@@ -19,12 +20,13 @@ export function Navigation() {
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/capture", label: "Ingest", icon: UploadCloud },
+    { href: "/interview", label: "Exit Interview", icon: MessageSquareMore },
     { href: "/ledger", label: "Evidence Ledger", icon: Layers },
-    { href: "/constellation", label: "Constellation", icon: Network },
     { href: "/brief", label: "Handover Brief", icon: FileText },
-    { href: "/capture", label: "Quick Ingest", icon: UploadCloud },
+    { href: "/constellation", label: "Constellation", icon: Network },
     { href: "/canary", label: "Leak Canary", icon: ShieldCheck },
-    { href: "/audit", label: "Audit Ledger", icon: History },
+    { href: "/audit", label: "Audit Chain", icon: History },
     { href: "/demo", label: "Personas", icon: Users },
   ];
 
@@ -38,7 +40,7 @@ export function Navigation() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs md:text-sm font-medium transition-all shrink-0 whitespace-nowrap ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs md:text-sm font-medium transition-all shrink-0 whitespace-nowrap ${
                 isActive
                   ? "bg-primary text-primary-foreground font-semibold shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
@@ -53,4 +55,3 @@ export function Navigation() {
     </nav>
   );
 }
-

@@ -58,8 +58,9 @@ export function shouldIgnoreFile(path: string): boolean {
 
 export async function ingestGitHubRepo(
   repoUrl: string,
-  githubToken?: string
-): Promise<{ documents: IngestedDocument[]; repoName: string }> {
+  githubToken?: string,
+  branch?: string
+): Promise<{ documents: IngestedDocument[]; repoName: string; branch: string }> {
   const parsed = parseGitHubUrl(repoUrl);
   if (!parsed) {
     throw new Error("Invalid GitHub repository URL. Must be in format https://github.com/owner/repo");
@@ -80,15 +81,15 @@ export async function ingestGitHubRepo(
     throw new Error(`GitHub API error (${repoRes.status}): Could not access repository ${owner}/${repo}`);
   }
   const repoData = await repoRes.json();
-  const defaultBranch = repoData.default_branch || "main";
+  const targetBranch = (branch && branch.trim()) || repoData.default_branch || "main";
 
   // 2. Fetch git tree recursively
   const treeRes = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/git/trees/${defaultBranch}?recursive=1`,
+    `https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(targetBranch)}?recursive=1`,
     { headers }
   );
   if (!treeRes.ok) {
-    throw new Error(`Failed to fetch file tree for branch ${defaultBranch}`);
+    throw new Error(`Failed to fetch file tree for branch ${targetBranch}`);
   }
   const treeData = await treeRes.json();
   const files: { path: string; url: string; size: number }[] = (treeData.tree || [])
@@ -97,11 +98,11 @@ export async function ingestGitHubRepo(
 
   const documents: IngestedDocument[] = [];
 
-  // Fetch file contents in parallel (concurrency 6)
+  // Fetch file contents in parallel
   const filePromises = files.map(async (file) => {
     try {
       const rawRes = await fetch(
-        `https://raw.githubusercontent.com/${owner}/${repo}/${defaultBranch}/${file.path}`,
+        `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(targetBranch)}/${file.path}`,
         { headers }
       );
       if (rawRes.ok) {
@@ -113,8 +114,9 @@ export async function ingestGitHubRepo(
             kind: "file",
             content: text,
             meta: {
-              url: `https://github.com/${owner}/${repo}/blob/${defaultBranch}/${file.path}`,
+              url: `https://github.com/${owner}/${repo}/blob/${targetBranch}/${file.path}`,
               size: text.length,
+              branch: targetBranch,
             },
           });
         }
@@ -125,21 +127,45 @@ export async function ingestGitHubRepo(
   });
   await Promise.all(filePromises);
 
-  // 3. Fetch latest 30 commits
+  // 3. Fetch latest commits on target branch (enrich up to 8 commits with real changed file paths)
   try {
     const commitsRes = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/commits?per_page=30`,
+      `https://api.github.com/repos/${owner}/${repo}/commits?sha=${encodeURIComponent(targetBranch)}&per_page=20`,
       { headers }
     );
     if (commitsRes.ok) {
       const commitsData = await commitsRes.json();
+      const detailedCommits = await Promise.all(
+        (commitsData || []).slice(0, 8).map(async (c: any) => {
+          try {
+            const detailRes = await fetch(
+              `https://api.github.com/repos/${owner}/${repo}/commits/${c.sha}`,
+              { headers }
+            );
+            if (detailRes.ok) {
+              const detailJson = await detailRes.json();
+              return {
+                sha: c.sha,
+                files: (detailJson.files || []).map((f: any) => f.filename).filter(Boolean) as string[],
+              };
+            }
+          } catch {
+            // Fallback to summary only
+          }
+          return { sha: c.sha, files: [] as string[] };
+        })
+      );
+      const filesBySha = new Map<string, string[]>(detailedCommits.map((d) => [d.sha, d.files]));
+
       for (const c of commitsData) {
         const sha = c.sha?.slice(0, 7) || "";
         const author = c.commit?.author?.name || "Unknown";
         const date = c.commit?.author?.date || "";
         const msg = c.commit?.message || "";
+        const titleLine = msg.split(/\r?\n/)[0] || msg;
+        const touchedFiles = filesBySha.get(c.sha) || [];
 
-        const commitText = `Commit ${sha} by ${author} on ${date}\n\n${msg}`;
+        const commitText = `Commit ${sha}: ${titleLine} (Author: ${author})\nDate: ${date}\n${touchedFiles.length > 0 ? `Files:\n${touchedFiles.join("\n")}\n\n` : "\n"}${msg}`;
         documents.push({
           path: `commits/${sha}`,
           kind: "commit",
@@ -148,6 +174,8 @@ export async function ingestGitHubRepo(
             sha,
             author,
             date,
+            title: titleLine,
+            files: touchedFiles,
             url: c.html_url,
           },
         });
@@ -160,6 +188,7 @@ export async function ingestGitHubRepo(
   return {
     documents,
     repoName: `${owner}/${repo}`,
+    branch: targetBranch,
   };
 }
 

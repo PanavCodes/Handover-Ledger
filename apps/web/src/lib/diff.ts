@@ -14,6 +14,7 @@ export interface DiffToken {
 export interface WordDiffResult {
   tokens: DiffToken[];
   hallucinatedCount: number;
+  hallucinatedWords: string[];
   matchRatio: number;
   diffHtml: string;
 }
@@ -27,16 +28,18 @@ export function computeWordDiff(
   const sourceWordSet = new Set(sourceWords.map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, "")));
 
   const tokens: DiffToken[] = [];
+  const hallucinatedWords: string[] = [];
   let hallucinatedCount = 0;
   let matchCount = 0;
 
   for (const word of quoteWords) {
     const clean = word.toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (sourceWordSet.has(clean)) {
+    if (clean && sourceWordSet.has(clean)) {
       tokens.push({ type: "match", text: word });
       matchCount++;
     } else {
       tokens.push({ type: "hallucinated", text: word });
+      hallucinatedWords.push(word);
       hallucinatedCount++;
     }
   }
@@ -56,6 +59,7 @@ export function computeWordDiff(
   return {
     tokens,
     hallucinatedCount,
+    hallucinatedWords,
     matchRatio: Math.round(matchRatio * 100) / 100,
     diffHtml,
   };

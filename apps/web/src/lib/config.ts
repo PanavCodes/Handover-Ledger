@@ -3,6 +3,7 @@ import { z } from "zod";
 const envSchema = z.object({
   SESSION_SECRET: z.string().default("handover-ledger-default-secret-key-must-be-changed-in-prod"),
   ANTHROPIC_API_KEY: z.string().optional(),
+  CLAUDE_MODEL_EXTRACT: z.string().default("claude-sonnet-4-5"),
   SUPABASE_URL: z.string().default("http://127.0.0.1:54321"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().default("dummy-service-role-key-for-local"),
   LLM_MODE: z.enum(["live", "replay"]).default("live"),
@@ -12,17 +13,28 @@ const envSchema = z.object({
 const env = envSchema.parse({
   SESSION_SECRET: process.env.SESSION_SECRET,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  CLAUDE_MODEL_EXTRACT: process.env.CLAUDE_MODEL_EXTRACT || undefined,
   SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   LLM_MODE: (process.env.LLM_MODE as "live" | "replay") || "live",
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
 });
 
+const isRealSupabase =
+  Boolean(env.SUPABASE_URL) &&
+  !env.SUPABASE_URL.includes("127.0.0.1") &&
+  !env.SUPABASE_URL.includes("your-project.supabase.co") &&
+  Boolean(env.SUPABASE_SERVICE_ROLE_KEY) &&
+  !env.SUPABASE_SERVICE_ROLE_KEY.includes("dummy") &&
+  !env.SUPABASE_SERVICE_ROLE_KEY.includes("your-supabase");
+
 export const config = {
   sessionSecret: env.SESSION_SECRET,
-  anthropicApiKey: env.ANTHROPIC_API_KEY || "",
+  anthropicApiKey: env.ANTHROPIC_API_KEY && !env.ANTHROPIC_API_KEY.includes("your-anthropic") ? env.ANTHROPIC_API_KEY : "",
+  claudeModelExtract: env.CLAUDE_MODEL_EXTRACT,
   supabaseUrl: env.SUPABASE_URL,
   supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+  isSupabaseConfigured: isRealSupabase,
   llmMode: env.LLM_MODE,
   appUrl: env.NEXT_PUBLIC_APP_URL,
 };

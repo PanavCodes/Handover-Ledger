@@ -1,22 +1,19 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useSession } from "@/components/shell/SessionContext";
 import { ClaimCard } from "@/components/ledger/ClaimCard";
 import { EvidenceLens } from "@/components/ledger/EvidenceLens";
 import { Claim } from "@/lib/types";
 import {
-  Layers,
   Search,
-  Filter,
-  ShieldCheck,
-  AlertTriangle,
-  FileText,
-  Lock,
-  CheckCircle2,
-  XCircle,
   LayoutGrid,
   List,
+  CheckCheck,
+  AlertTriangle,
+  MessageSquareMore,
+  ArrowRight,
 } from "lucide-react";
 
 export default function LedgerPage() {
@@ -24,6 +21,7 @@ export default function LedgerPage() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [inspectingClaim, setInspectingClaim] = useState<Claim | null>(null);
+  const [batchApproving, setBatchApproving] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -56,59 +54,127 @@ export default function LedgerPage() {
 
   useEffect(() => {
     fetchClaims();
-    const handlePersonaChange = () => fetchClaims();
-    window.addEventListener("persona-changed", handlePersonaChange);
-    return () => window.removeEventListener("persona-changed", handlePersonaChange);
+    const handleRefresh = () => fetchClaims();
+    window.addEventListener("persona-changed", handleRefresh);
+    window.addEventListener("demo-reset", handleRefresh);
+    return () => {
+      window.removeEventListener("persona-changed", handleRefresh);
+      window.removeEventListener("demo-reset", handleRefresh);
+    };
   }, [fetchClaims]);
 
-  const verifiedCount = claims.filter((c) => c.status === "verified").length;
+  const handleBatchApprove = async () => {
+    setBatchApproving(true);
+    try {
+      const res = await fetch("/api/claims/batch-approve", { method: "POST" });
+      if (res.ok) {
+        fetchClaims();
+      }
+    } finally {
+      setBatchApproving(false);
+    }
+  };
+
+  const pendingVerifiedCount = claims.filter(
+    (c) => c.status === "verified" && c.review_state === "pending"
+  ).length;
   const conflictCount = claims.filter((c) => c.status === "conflicting").length;
+  const missingCount = claims.filter((c) => c.status === "missing").length;
 
   return (
     <div className="space-y-6 animate-in fade-in-50 duration-200">
       {/* Header */}
       <div className="p-6 md:p-8 rounded-2xl bg-card border border-border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold uppercase">
               Truth Engine
             </span>
             <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-semibold">
-              Zero Hallucinations
+              1:1 Offset Verifier
             </span>
           </div>
           <h1 className="font-serif text-2xl md:text-3xl font-extrabold text-foreground tracking-tight mt-1">
-            Evidence Ledger & Verification Console
+            Evidence Ledger &amp; Review Console
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground max-w-2xl mt-1 leading-relaxed">
-            Every claim is linked to source documents via exact character offsets. Inspect verbatim quotes,
-            triage planted contradictions, and approve knowledge handover records.
+            Inspect verbatim character-offset quotes, resolve cross-document contradictions, view non-destructive revisions, and approve handover claims.
           </p>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center gap-2 bg-muted/60 p-1 rounded-xl border border-border">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`p-2 rounded-lg text-xs font-medium transition ${
-              viewMode === "grid"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode("table")}
-            className={`p-2 rounded-lg text-xs font-medium transition ${
-              viewMode === "table"
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <List className="w-4 h-4" />
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {persona.role === "lead" && pendingVerifiedCount > 0 && (
+            <button
+              disabled={batchApproving}
+              onClick={handleBatchApprove}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition shadow disabled:opacity-50"
+            >
+              <CheckCheck className="w-4 h-4" />
+              <span>Batch Approve Verified ({pendingVerifiedCount})</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border">
+            <button
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid view"
+              className={`p-2 rounded-lg text-xs font-medium transition ${
+                viewMode === "grid"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              aria-label="Table view"
+              className={`p-2 rounded-lg text-xs font-medium transition ${
+                viewMode === "table"
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+      </div>
+
+      {/* Quick Triage Pills + Gap Callout */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2 text-xs">
+          {[
+            { value: "all", label: "All Claims" },
+            { value: "verified", label: "Verified" },
+            { value: "conflicting", label: `Conflicts${conflictCount > 0 ? ` (${conflictCount})` : ""}` },
+            { value: "missing", label: `Missing Gaps${missingCount > 0 ? ` (${missingCount})` : ""}` },
+            { value: "inferred", label: "Inferred" },
+          ].map((pill) => (
+            <button
+              key={pill.value}
+              onClick={() => setStatusFilter(pill.value)}
+              className={`px-3 py-1.5 rounded-full font-mono text-[11px] font-semibold border transition ${
+                statusFilter === pill.value
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-card hover:bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              {pill.label}
+            </button>
+          ))}
+        </div>
+
+        {missingCount > 0 && (
+          <Link
+            href="/interview"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-semibold transition"
+          >
+            <MessageSquareMore className="w-3.5 h-3.5" />
+            <span>Close {missingCount} Missing Gaps in Exit Interview</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        )}
       </div>
 
       {/* Filter & Search Bar */}
@@ -125,7 +191,6 @@ export default function LedgerPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -133,12 +198,11 @@ export default function LedgerPage() {
           >
             <option value="all">All Statuses</option>
             <option value="verified">Verified (Exact Match)</option>
-            <option value="inferred">Inferred</option>
             <option value="conflicting">Planted Conflicts</option>
-            <option value="missing">Missing</option>
+            <option value="missing">Missing Gaps</option>
+            <option value="inferred">Inferred</option>
           </select>
 
-          {/* Type Filter */}
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
@@ -153,6 +217,7 @@ export default function LedgerPage() {
             <option value="milestone">Milestones</option>
             <option value="process">Processes</option>
             <option value="credential_ref">Credentials</option>
+            <option value="contact">Contacts</option>
           </select>
         </div>
       </div>
@@ -179,7 +244,6 @@ export default function LedgerPage() {
           ))}
         </div>
       ) : (
-        /* Table View */
         <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -206,8 +270,8 @@ export default function LedgerPage() {
                           c.status === "verified"
                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                             : c.status === "conflicting"
-                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                              : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
                         }`}
                       >
                         {c.status}
@@ -226,7 +290,7 @@ export default function LedgerPage() {
                       {c.citations && c.citations.length > 0 ? (
                         <span>{c.citations[0].document_path}</span>
                       ) : (
-                        <span>No citation</span>
+                        <span>Missing source</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap font-mono font-bold text-foreground">
@@ -251,7 +315,7 @@ export default function LedgerPage() {
         </div>
       )}
 
-      {/* Evidence Lens Modal / Drawer */}
+      {/* Evidence Lens Modal */}
       <EvidenceLens
         claim={inspectingClaim}
         onClose={() => setInspectingClaim(null)}

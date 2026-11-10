@@ -130,6 +130,13 @@ const RECORD_CLAIMS_TOOL: Anthropic.Tool = {
   },
 };
 
+function sanitizeSecretsForDisplay(input: string): string {
+  return input
+    .replace(/\b(sk-[A-Za-z0-9_\-]{6})[A-Za-z0-9_\-]{8,}/g, "$1***REDACTED***")
+    .replace(/\b(ghp_[A-Za-z0-9_]{6})[A-Za-z0-9_]{8,}/g, "$1***REDACTED***")
+    .replace(/\b(AKIA[0-9A-Z]{4})[0-9A-Z]{12}\b/g, "$1***REDACTED***");
+}
+
 export async function extractClaimsFromDocuments(
   docs: { id: string; path: string; kind: string; content: string }[]
 ): Promise<ExtractionBatchResult> {
@@ -149,7 +156,7 @@ export async function extractClaimsFromDocuments(
         .join("\n\n") + "\n\nExtract and record all claims now.";
 
       const response = await client.messages.create({
-        model: "claude-3-5-sonnet-20241022",
+        model: config.claudeModelExtract,
         max_tokens: 4096,
         system: [
           {
@@ -238,14 +245,25 @@ export async function extractClaimsFromDocuments(
         citations: validCitations,
       });
     } else {
-      // Record rejection with word-level hallucination diff
+      // Record rejection with word-level hallucination diff (and secret masking)
       const targetDocText = docMap.get(proposed.citations[0]?.document_id) || "";
       const diffAnalysis = computeWordDiff(proposed.citations[0]?.quote || "", targetDocText);
 
       rejectedClaims.push({
-        proposed,
+        proposed: {
+          ...proposed,
+          statement: sanitizeSecretsForDisplay(proposed.statement),
+          citations: proposed.citations.map((c) => ({
+            ...c,
+            quote: sanitizeSecretsForDisplay(c.quote),
+          })),
+        },
         reason: failureReason,
-        diff_analysis: diffAnalysis,
+        diff_analysis: {
+          hallucinated_words: diffAnalysis.hallucinatedWords,
+          diff_html: sanitizeSecretsForDisplay(diffAnalysis.diffHtml),
+          match_ratio: diffAnalysis.matchRatio,
+        },
       });
     }
   }
@@ -260,8 +278,9 @@ export async function extractClaimsFromDocuments(
 }
 
 /**
- * Deterministic fallback claim extractor for offline demo mode or test runs.
- * Extracts grounded claims with 100% genuine verbatim quotes from the supplied documents.
+ * Deterministic structural claim extractor for offline/replay mode or fallback.
+ * Extracts grounded claims with 100% genuine verbatim substrings from arbitrary documents,
+ * while stripping prompt injections and triggering the verifier on raw secret leaks.
  */
 function generateDeterministicClaims(
   docs: { id: string; path: string; kind: string; content: string }[]
@@ -270,13 +289,27 @@ function generateDeterministicClaims(
 
   for (const doc of docs) {
     const text = doc.content;
+    let docClaimCount = 0;
+    const seenQuotes = new Set<string>();
 
-    // Pattern 1: MQTT decision
+    const pushClaim = (c: ExtractedClaimRaw) => {
+      const q = c.citations[0]?.quote?.trim();
+      if (!q || q.length < 12 || seenQuotes.has(q) || docClaimCount >= 6) return;
+      seenQuotes.add(q);
+      docClaimCount++;
+      claims.push(c);
+    };
+
+    // Guard against simulated prompt injection strings inside documents
+    // (Prompt injection attempts are ignored as instructions; never obeyed)
+
+    // 1. Specific high-precision Aurora fixtures + secret guard check
     if (text.includes("decided to adopt MQTT over TLS")) {
-      claims.push({
+      pushClaim({
         type: "decision",
         title: "Telemetry Protocol: MQTT over TLS Adopted",
-        statement: "The team evaluated ROS 2 topics and gRPC but selected MQTT over TLS for all telemetry streams due to resource efficiency.",
+        statement:
+          "The team selected MQTT over TLS for telemetry streams due to resource efficiency.",
         subject_key: "component:telemetry",
         assertion_value: "MQTT over TLS",
         basis: "explicit",
@@ -284,18 +317,18 @@ function generateDeterministicClaims(
         citations: [
           {
             document_id: doc.id,
-            quote: "we decided to adopt MQTT over TLS for all telemetry streams.",
+            quote: "we decided to adopt MQTT over TLS for all telemetry streams",
           },
         ],
       });
     }
 
-    // Pattern 2: Kafka discarded
     if (text.includes("Kafka was evaluated and explicitly discarded")) {
-      claims.push({
+      pushClaim({
         type: "decision",
         title: "Kafka Discarded for Rover Telemetry",
-        statement: "Kafka was rejected due to extreme 4GB RAM limitations on the onboard Jetson Nano compute board.",
+        statement:
+          "Kafka was rejected due to extreme 4GB RAM limitations on the onboard Jetson Nano compute board.",
         subject_key: "component:telemetry",
         assertion_value: "Kafka Rejected",
         basis: "explicit",
@@ -303,18 +336,19 @@ function generateDeterministicClaims(
         citations: [
           {
             document_id: doc.id,
-            quote: "Kafka was evaluated and explicitly discarded due to extreme RAM constraints on the Jetson Nano (4GB).",
+            quote:
+              "Kafka was evaluated and explicitly discarded due to extreme RAM constraints on the Jetson Nano (4GB).",
           },
         ],
       });
     }
 
-    // Pattern 3: Firmware maintainer
     if (text.includes("Primary maintainer of the motor controller firmware is Rahul Mehta")) {
-      claims.push({
+      pushClaim({
         type: "owner",
         title: "Motor Controller Firmware Maintainer",
-        statement: "Rahul Mehta is the designated primary owner and author of the rover's low-level motor controller firmware.",
+        statement:
+          "Rahul Mehta is the designated primary owner of the motor controller firmware.",
         subject_key: "component:firmware",
         assertion_value: "Rahul Mehta",
         basis: "explicit",
@@ -328,12 +362,12 @@ function generateDeterministicClaims(
       });
     }
 
-    // Pattern 4: ServoWorks vendor
     if (text.includes("Priya Sharma (support@servoworks.example)")) {
-      claims.push({
+      pushClaim({
         type: "contact",
         title: "ServoWorks Motor Controller Vendor Contact",
-        statement: "Primary external vendor contact for replacement motor controllers is Priya Sharma at ServoWorks.",
+        statement:
+          "Primary external vendor contact for replacement motor controllers is Priya Sharma at ServoWorks.",
         subject_key: "vendor:servoworks",
         assertion_value: "Priya Sharma",
         basis: "explicit",
@@ -341,28 +375,192 @@ function generateDeterministicClaims(
         citations: [
           {
             document_id: doc.id,
-            quote: "ServoWorks contact: Priya Sharma (support@servoworks.example).",
+            quote: "Priya Sharma (support@servoworks.example)",
           },
         ],
       });
     }
 
-    // Pattern 5: Secret pattern test (will be caught and rejected by the verifier!)
-    if (text.includes("ghp_")) {
-      claims.push({
-        type: "credential_ref",
-        title: "GitHub Personal Access Token Mentioned",
-        statement: "A GitHub token was mentioned in ops notes.",
-        subject_key: "credential:github",
-        basis: "explicit",
-        confidence: 0.5,
-        citations: [
-          {
-            document_id: doc.id,
-            quote: "API Key: ghp_123456789012345678901234567890 (vault 'rover-ops')",
-          },
-        ],
-      });
+    // Secret guard test trigger: proposes citation containing raw token so verifier rejects & logs it
+    const rawSecretRegex = /(?:ghp_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_\-]{20,}|AKIA[0-9A-Z]{16})/;
+    const secretLineMatch = text.match(/[^\n]*(?:ghp_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_\-]{20,}|AKIA[0-9A-Z]{16})[^\n]*/);
+    if (secretLineMatch) {
+      const secretQuote = secretLineMatch[0].trim().slice(0, 220);
+      if (secretQuote.length >= 12) {
+        pushClaim({
+          type: "credential_ref",
+          title: "Raw Secret Token Exposure Blocked",
+          statement: "A raw token pattern was spotted in source text and flagged for secret guard inspection.",
+          subject_key: "credential:raw_token",
+          basis: "explicit",
+          confidence: 0.5,
+          citations: [
+            {
+              document_id: doc.id,
+              quote: secretQuote,
+            },
+          ],
+        });
+      }
+    }
+
+    // 2. General-purpose structural sentence/line classifier for ANY real repo, upload, or capture note
+    const rawSegments = text
+      .split(/(?:\r?\n)+|(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 16 && s.length <= 260)
+      .filter((s) => !/^(SYSTEM:|Assistant:|ignore previous instructions)/i.test(s))
+      .filter((s) => !rawSecretRegex.test(s));
+
+    const docSlug = doc.path.replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 32);
+
+    for (const seg of rawSegments) {
+      if (docClaimCount >= 6) break;
+      const lower = seg.toLowerCase();
+
+      // Skip markdown horizontal rules / pure code symbols / headings with no sentence meaning
+      if (/^[-=*`#|>]{3,}$/.test(seg) || seg.startsWith("```") || seg.startsWith("import ")) {
+        continue;
+      }
+
+      const cleanQuote = seg.slice(0, 240);
+
+      // Decision
+      if (/\b(decision|decided|adopted|chose|chosen|selected|switched to|migrate|migrated to|discarded|deprecated|freeze|frozen)\b/i.test(lower)) {
+        const valueMatch = seg.match(/(?:adopt|chose|selected|migrate(?:d)?(?:\s+[^:]+)?\s+to|to|at|freeze)\s+([A-Za-z0-9._\-\/ ]{3,40})/i);
+        pushClaim({
+          type: "decision",
+          title: cleanQuote.replace(/^#+\s*/, "").slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `decision:${docSlug}`,
+          assertion_value: valueMatch ? valueMatch[1].trim() : cleanQuote.slice(0, 48),
+          basis: "explicit",
+          confidence: 0.91,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Blocker / Overdue / Unfinished
+      if (/\b(blocked|blocker|overdue|unassigned|broken|cannot deploy|stuck|waiting on)\b/i.test(lower)) {
+        pushClaim({
+          type: "blocker",
+          title: cleanQuote.replace(/^[-*]\s*/, "").slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `blocker:${docSlug}`,
+          assertion_value: "blocked",
+          basis: "explicit",
+          confidence: 0.9,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Open question / TODO
+      if (/\b(todo|fixme|open question|unresolved|tbd)\b/i.test(lower) || (seg.endsWith("?") && seg.length >= 20)) {
+        pushClaim({
+          type: "open_question",
+          title: cleanQuote.replace(/^[-*#]+\s*/, "").slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `question:${docSlug}`,
+          basis: "explicit",
+          confidence: 0.85,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Owner / Maintainer
+      if (/\b(owner|maintainer|owned by|maintained by|primary contact|assignee|author)\b/i.test(lower) && !lower.includes("unassigned")) {
+        const ownerMatch = seg.match(/(?:owner|maintainer|owned by|maintained by|assignee|author)\s*[:\-is]+\s*([A-Z][a-zA-Z.\- ]{2,40})/i);
+        const person = ownerMatch ? ownerMatch[1].trim() : undefined;
+        pushClaim({
+          type: "owner",
+          title: person ? `Component Owner: ${person}` : cleanQuote.slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `component:${docSlug}`,
+          assertion_value: person,
+          basis: "explicit",
+          confidence: 0.9,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Risk / Failure / Expiry / Baud
+      if (/\b(risk|silently fail|single point of failure|expires|expiry|warning|fragile|baud|outage|crash)\b/i.test(lower)) {
+        const baudMatch = seg.match(/(\d{4,6})\s*baud/i);
+        pushClaim({
+          type: "risk",
+          title: cleanQuote.replace(/^#+\s*/, "").slice(0, 72),
+          statement: cleanQuote,
+          subject_key: baudMatch ? "hardware:canbus_baud" : `risk:${docSlug}`,
+          assertion_value: baudMatch ? `${baudMatch[1]} baud` : undefined,
+          basis: "explicit",
+          confidence: 0.89,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Contact / Vendor
+      if (/\b(vendor|supplier|poc|support@|contact)\b/i.test(lower) || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(seg)) {
+        const emailOrName = seg.match(/([A-Z][a-z]+\s+[A-Z][a-z]+|[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/);
+        pushClaim({
+          type: "contact",
+          title: emailOrName ? `External Contact: ${emailOrName[1]}` : cleanQuote.slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `contact:${docSlug}`,
+          assertion_value: emailOrName ? emailOrName[1] : undefined,
+          basis: "explicit",
+          confidence: 0.92,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Milestone / Deadline
+      if (/\b(milestone|deadline|due\s+\d{4}|due\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|deliverable|release date)\b/i.test(lower)) {
+        pushClaim({
+          type: "milestone",
+          title: cleanQuote.slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `milestone:${docSlug}`,
+          assertion_value: "scheduled",
+          basis: "explicit",
+          confidence: 0.88,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Credential reference (safe non-secret mentions)
+      if (/\b(vault|password manager|secret|env var|environment variable|rotated every)\b/i.test(lower) && !secretLineMatch) {
+        pushClaim({
+          type: "credential_ref",
+          title: cleanQuote.slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `credential:${docSlug}`,
+          basis: "explicit",
+          confidence: 0.87,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
+
+      // Process / Runbook / Command
+      if (/\b(runbook|cron|backup|deploy|restore|rotate|always hold|flash|quickstart|install|pnpm\s|npm\s|pytest|vitest)\b/i.test(lower)) {
+        pushClaim({
+          type: "process",
+          title: cleanQuote.replace(/^#+\s*/, "").slice(0, 72),
+          statement: cleanQuote,
+          subject_key: `process:${docSlug}`,
+          basis: "explicit",
+          confidence: 0.88,
+          citations: [{ document_id: doc.id, quote: cleanQuote }],
+        });
+        continue;
+      }
     }
   }
 

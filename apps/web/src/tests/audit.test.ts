@@ -37,7 +37,6 @@ describe("Head-Anchored Cryptographic Audit Log", () => {
       {
         id: 1,
         workspace_id: "ws-1",
-        seq: 1,
         prev_hash: GENESIS_PREV_HASH,
         record_hash: hash1,
         ...record1,
@@ -45,7 +44,6 @@ describe("Head-Anchored Cryptographic Audit Log", () => {
       {
         id: 2,
         workspace_id: "ws-1",
-        seq: 2,
         prev_hash: hash1,
         record_hash: hash2,
         ...record2,
@@ -79,7 +77,6 @@ describe("Head-Anchored Cryptographic Audit Log", () => {
       {
         id: 1,
         workspace_id: "ws-1",
-        seq: 1,
         prev_hash: GENESIS_PREV_HASH,
         record_hash: hash1,
         ...record1,
@@ -118,7 +115,6 @@ describe("Head-Anchored Cryptographic Audit Log", () => {
       {
         id: 1,
         workspace_id: "ws-1",
-        seq: 1,
         prev_hash: GENESIS_PREV_HASH,
         record_hash: hash1,
         ...record1,

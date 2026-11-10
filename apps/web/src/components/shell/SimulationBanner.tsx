@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useSession } from "./SessionContext";
-import { ShieldAlert, ArrowRight, Eye } from "lucide-react";
+import { ArrowRight, Eye, Lock } from "lucide-react";
 
 export function SimulationBanner() {
   const { persona, withheldCount, switchPersona } = useSession();
@@ -21,8 +21,9 @@ export function SimulationBanner() {
             <span className="font-semibold underline decoration-amber-500/50">{persona.name}</span>{" "}
             ({persona.badge}).
             {withheldCount > 0 ? (
-              <span className="ml-1 text-amber-700 dark:text-amber-300 font-medium">
-                🔒 {withheldCount} claims/sources are cryptographically withheld from this role by RLS & strictest-source choke point.
+              <span className="ml-1.5 inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium">
+                <Lock className="w-3 h-3" />
+                {withheldCount} claims are server-side withheld from this role by the strictest-source gate.
               </span>
             ) : null}
           </span>
@@ -38,4 +39,3 @@ export function SimulationBanner() {
     </div>
   );
 }
-

@@ -10,6 +10,7 @@ import {
   Network,
   FileText,
   UploadCloud,
+  MessageSquareMore,
   ShieldCheck,
   History,
   RotateCcw,
@@ -116,6 +117,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               >
                 <UploadCloud className="w-4 h-4 text-primary" />
                 <span>Quick Ingest & Repository Sync</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => runAction(() => router.push("/interview"))}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer hover:bg-muted text-foreground"
+              >
+                <MessageSquareMore className="w-4 h-4 text-primary" />
+                <span>Gap-Driven Exit Interview Loop</span>
               </Command.Item>
             </Command.Group>
 

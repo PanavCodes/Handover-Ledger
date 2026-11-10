@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { Store } from "@/lib/store";
 import { filterClaimsForPersona } from "@/lib/access";
+import { Claim } from "@/lib/types";
 
 export async function GET(
   req: NextRequest,
@@ -23,7 +24,8 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ claim });
+  const versions = Store.getClaimVersions(params.id);
+  return NextResponse.json({ claim, versions });
 }
 
 export async function PATCH(
@@ -42,9 +44,53 @@ export async function PATCH(
 
   try {
     const body = await req.json();
+    const safeUpdates: Partial<Claim> = {};
+
+    if (typeof body.title === "string" && body.title.trim().length > 0) {
+      safeUpdates.title = body.title.trim();
+    }
+    if (typeof body.statement === "string" && body.statement.trim().length > 0) {
+      safeUpdates.statement = body.statement.trim();
+    }
+    if (
+      typeof body.type === "string" &&
+      [
+        "decision",
+        "owner",
+        "blocker",
+        "open_question",
+        "risk",
+        "contact",
+        "milestone",
+        "credential_ref",
+        "process",
+      ].includes(body.type)
+    ) {
+      safeUpdates.type = body.type;
+    }
+    if (
+      typeof body.status === "string" &&
+      ["verified", "inferred", "conflicting", "missing"].includes(body.status)
+    ) {
+      safeUpdates.status = body.status;
+    }
+    if (typeof body.assertion_value === "string") {
+      safeUpdates.assertion_value = body.assertion_value;
+    }
+    if (typeof body.inference_note === "string") {
+      safeUpdates.inference_note = body.inference_note;
+    }
+    if (
+      session.persona === "lead" &&
+      typeof body.review_state === "string" &&
+      ["pending", "approved", "rejected"].includes(body.review_state)
+    ) {
+      safeUpdates.review_state = body.review_state;
+    }
+
     const updated = Store.updateClaim(
       params.id,
-      body,
+      safeUpdates,
       session.persona === "lead" ? "Dr. Meera Iyer (Lead)" : "Rahul Mehta (Leaver)"
     );
 
@@ -52,9 +98,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Claim not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ claim: updated });
-  } catch (err) {
+    const versions = Store.getClaimVersions(params.id);
+    return NextResponse.json({ claim: updated, versions });
+  } catch {
     return NextResponse.json({ error: "Failed to update claim" }, { status: 500 });
   }
 }
-

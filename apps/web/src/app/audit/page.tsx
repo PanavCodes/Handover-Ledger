@@ -41,17 +41,17 @@ export default function AuditPage() {
 
   useEffect(() => {
     fetchAudit();
+    const handleRefresh = () => fetchAudit();
+    window.addEventListener("demo-reset", handleRefresh);
+    return () => window.removeEventListener("demo-reset", handleRefresh);
   }, []);
 
   const displayVerification = tampered
     ? {
         valid: false,
-        verifiedCount: records.length,
-        expectedCount: headAnchor?.expected_count || records.length,
-        errors: [
-          "SIMULATED ATTACK: Interior payload byte mutated in block #2! SHA-256 hash mismatch.",
-          "Expected prev_hash link broken between block #2 and block #3.",
-        ],
+        recordCount: records.length,
+        message:
+          "SIMULATED ATTACK: Interior payload byte mutated in block #2! SHA-256 hash mismatch between block #2 and block #3.",
       }
     : verification;
 
@@ -124,7 +124,7 @@ export default function AuditPage() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 {displayVerification?.valid
                   ? `Verified all ${records.length} sequential blocks against head anchor ${headAnchor?.expected_head_hash?.slice(0, 12)}...`
-                  : displayVerification?.errors?.join(" | ")}
+                  : displayVerification?.message || displayVerification?.errors?.join(" | ") || "Verification pending..."}
               </p>
             </div>
           </div>

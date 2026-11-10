@@ -156,6 +156,36 @@ export interface RoadmapItem {
   description: string;
   timeframe: "day1" | "week1" | "month1";
   linked_claim_ids: string[];
+  required_scope?: "all" | "core_dev" | "coordinator";
   done?: boolean;
+}
+
+export interface InterviewQuestion {
+  id: string;
+  workspace_id: string;
+  gap_rule: string;
+  subject_key: string;
+  question: string;
+  why_asked: string;
+  status: "pending" | "answered" | "skipped";
+  answer_text?: string;
+  skip_reason?: string;
+  resulting_claim_id?: string;
+  missing_claim_id?: string;
+  created_at: string;
+  answered_at?: string;
+}
+
+export interface AttestationState {
+  leaver_attested: boolean;
+  leaver_name?: string;
+  leaver_attested_at?: string;
+  leaver_signature_hash?: string;
+  successor_core_acknowledged: boolean;
+  successor_core_at?: string;
+  successor_core_receipt_hash?: string;
+  successor_coord_acknowledged: boolean;
+  successor_coord_at?: string;
+  successor_coord_receipt_hash?: string;
 }
 

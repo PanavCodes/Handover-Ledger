@@ -10,13 +10,20 @@ export async function GET(req: NextRequest) {
 
   const allClaims = Store.getClaims();
   const { visibleClaims, withheldCount } = filterClaimsForPersona(allClaims, session.persona);
+  const attestation = Store.getAttestation();
 
   const decisions = visibleClaims.filter((c) => c.type === "decision");
   const unfinished = visibleClaims.filter(
-    (c) => c.type === "blocker" || c.type === "open_question" || (c.type === "milestone" && c.assertion_value !== "done")
+    (c) =>
+      c.type === "blocker" ||
+      c.type === "open_question" ||
+      c.status === "missing" ||
+      (c.type === "milestone" && c.assertion_value !== "done")
   );
   const ownership = visibleClaims.filter((c) => c.type === "owner" || c.type === "contact");
-  const risks = visibleClaims.filter((c) => c.type === "risk" || c.type === "credential_ref" || c.status === "conflicting");
+  const risks = visibleClaims.filter(
+    (c) => c.type === "risk" || c.type === "credential_ref" || c.status === "conflicting"
+  );
 
   // Format 1: JSON Export
   if (format === "json") {
@@ -25,8 +32,10 @@ export async function GET(req: NextRequest) {
         exportedAt: new Date().toISOString(),
         persona: session.persona,
         withheldCount,
+        visibleClaimsCount: visibleClaims.length,
         generator: "Handover Ledger v1.0",
         cryptographicProof: "Deterministic Verifier + SHA-256 Hash Chain",
+        attestation,
       },
       decisions,
       unfinished,
@@ -42,15 +51,15 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Format 2: Agent-Ready Export (claude-handoff / AGENTS.md style) [WOW FEATURE]
+  // Format 2: Agent-Ready Export (AGENTS.md / HANDOVER.md style)
   if (format === "agent") {
     let agentMd = `# HANDOVER.md — Agent Architectural Context & Task Handoff\n`;
     agentMd += `> Generated for AI Coding Agents (Antigravity, Claude Code, Cursor) | Scope: ${session.persona.toUpperCase()}\n`;
-    agentMd += `> Integrity: 100% Machine-Verified Citations | Withheld from Scope: ${withheldCount} items\n\n`;
+    agentMd += `> Integrity: Machine-Verified Citations | Withheld from Scope: ${withheldCount} items | Visible Claims: ${visibleClaims.length}\n\n`;
 
     agentMd += `## 1. The Goal & System Context\n`;
-    agentMd += `This repository contains the Rover control systems, firmware, telemetry and operations for Aurora Robotics.\n`;
-    agentMd += `The previous lead maintainer is transitioning out. This document establishes all verified constraints.\n\n`;
+    agentMd += `This workspace contains the Aurora Rover Robotics Lab systems, firmware, telemetry, and operational plans.\n`;
+    agentMd += `Restricted sources outside the \`${session.persona}\` scope are server-side omitted.\n\n`;
 
     agentMd += `## 2. Key Architectural Decisions (Ground Truth)\n`;
     for (const d of decisions) {
@@ -76,14 +85,16 @@ export async function GET(req: NextRequest) {
     }
     agentMd += `\n`;
 
-    agentMd += `## 5. Unfinished Work & Immediate Day-1 Tasks\n`;
+    agentMd += `## 5. Unfinished Work, Gaps & Immediate Tasks\n`;
     for (const u of unfinished) {
-      agentMd += `- [ ] **${u.title}**: ${u.statement}\n`;
+      agentMd += `- [ ] **[${u.status.toUpperCase()}] ${u.title}**: ${u.statement}\n`;
     }
     agentMd += `\n`;
 
-    agentMd += `## 6. Quick Start Commands\n`;
-    agentMd += `\`\`\`bash\n# Verify dependencies and tests\npnpm install\npnpm test\n\`\`\`\n`;
+    agentMd += `## 6. Verification & Sign-Off Metadata\n`;
+    agentMd += `- Leaver Attested: ${attestation.leaver_attested ? `Yes (${attestation.leaver_signature_hash?.slice(0, 16)}...)` : "Pending"}\n`;
+    agentMd += `- Core Successor Acknowledged: ${attestation.successor_core_acknowledged ? "Yes" : "Pending"}\n`;
+    agentMd += `- Coordinator Acknowledged: ${attestation.successor_coord_acknowledged ? "Yes" : "Pending"}\n\n`;
 
     return new NextResponse(agentMd, {
       headers: {
@@ -95,7 +106,7 @@ export async function GET(req: NextRequest) {
 
   // Format 3: Standard Footnoted Markdown Export
   let md = `# Handover Brief: Aurora Rover Robotics Lab\n\n`;
-  md += `**Export Scope:** \`${session.persona}\` | **Generated:** ${new Date().toLocaleDateString()} | **Withheld Items:** ${withheldCount}\n\n`;
+  md += `**Export Scope:** \`${session.persona}\` | **Generated:** ${new Date().toISOString()} | **Withheld Items:** ${withheldCount}\n\n`;
   md += `---\n\n`;
 
   let footnoteCounter = 1;
@@ -124,7 +135,7 @@ export async function GET(req: NextRequest) {
   };
 
   renderSection("1. Decisions & Architecture Choices", decisions);
-  renderSection("2. Unfinished Work & Active Blockers", unfinished);
+  renderSection("2. Unfinished Work, Gaps & Active Blockers", unfinished);
   renderSection("3. Subsystem Ownership & Key Contacts", ownership);
   renderSection("4. Risks, Expiring Items & Fragilities", risks);
 
@@ -142,4 +153,3 @@ export async function GET(req: NextRequest) {
     },
   });
 }
-

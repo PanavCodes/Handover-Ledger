@@ -26,11 +26,15 @@ export function Topbar({ onOpenCommandPalette }: TopbarProps) {
   const { theme, setTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
 
   const handleReset = async () => {
-    if (confirm("Reset demo store back to original Aurora Rover dataset?")) {
-      setResetting(true);
+    setResetting(true);
+    try {
       await resetDemo();
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 2000);
+    } finally {
       setResetting(false);
     }
   };
@@ -178,9 +182,10 @@ export function Topbar({ onOpenCommandPalette }: TopbarProps) {
             onClick={handleReset}
             disabled={resetting}
             title="Reset demo data to clean synthetic state"
-            className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition shadow-sm disabled:opacity-50"
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition shadow-sm disabled:opacity-50 text-xs"
           >
-            <RotateCcw className={`w-4 h-4 ${resetting ? "animate-spin" : ""}`} />
+            <RotateCcw className={`w-3.5 h-3.5 ${resetting ? "animate-spin" : ""}`} />
+            {resetDone ? <span className="text-emerald-500 font-mono text-[10px]">Reset</span> : null}
           </button>
 
           {/* Theme Toggle Button */}

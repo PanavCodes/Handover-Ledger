@@ -14,17 +14,22 @@ import {
 
 interface CanaryTestResult {
   persona: string;
+  personaName?: string;
   surface: string;
   canaryExpected: boolean;
   canaryFound: boolean;
   pass: boolean;
-  detail: string;
+  testedToken?: string;
+  detail?: string;
+  details?: string;
 }
 
 export function LeakCanaryGrid() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<{
     overallPass: boolean;
+    totalChecks?: number;
+    passedChecks?: number;
     timestamp: string;
     matrix: CanaryTestResult[];
   } | null>(null);
@@ -88,22 +93,24 @@ export function LeakCanaryGrid() {
             Canary Invariant Status
           </span>
           <div className="mt-2 flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+            <span className={`w-3 h-3 rounded-full ${data?.overallPass !== false ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
             <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-              100% Passed
+              {data ? `${data.passedChecks ?? data.matrix.filter((m) => m.pass).length}/${data.totalChecks ?? data.matrix.length} Passed` : "Scanning..."}
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">Zero leaks detected across 16 matrix tests</p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Zero leaks detected across {data?.totalChecks || 16} matrix checks
+          </p>
         </div>
 
         <div className="p-4 rounded-xl bg-card border border-border">
           <span className="text-xs font-mono text-muted-foreground uppercase">
-            Plant Canary Token
+            Planted Canary Tokens
           </span>
           <div className="mt-2 font-mono text-xs font-semibold text-foreground truncate bg-muted/50 p-1.5 rounded border border-border">
-            CANARY&#123;core_telemetry_aes_key_v2&#125;
+            CANARY-RESTRICTED-CORE-FIRMWARE-SECRET
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1">Embedded in restricted telemetry doc</p>
+          <p className="text-[11px] text-muted-foreground mt-1">Plus coordinator &amp; faculty confidential canaries</p>
         </div>
 
         <div className="p-4 rounded-xl bg-card border border-border">
@@ -182,8 +189,8 @@ export function LeakCanaryGrid() {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-3 text-muted-foreground max-w-xs truncate">
-                      {row.detail}
+                    <td className="px-6 py-3 text-muted-foreground max-w-xs truncate" title={row.details || row.detail}>
+                      {row.details || row.detail}
                     </td>
                   </tr>
                 ))

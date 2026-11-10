@@ -20,12 +20,24 @@ export async function POST(
     return NextResponse.json({ error: "Claim not found" }, { status: 404 });
   }
 
+  let reason: string | undefined;
+  try {
+    const body = await req.json();
+    if (typeof body?.reason === "string" && body.reason.trim()) {
+      reason = body.reason.trim();
+    }
+  } catch {
+    // Empty POST body is allowed
+  }
+
   const updated = Store.updateClaim(
     params.id,
-    { review_state: "rejected" },
+    {
+      review_state: "rejected",
+      ...(reason ? { inference_note: `Rejected by Lead: ${reason}` } : {}),
+    },
     "Dr. Meera Iyer (Lead)"
   );
 
   return NextResponse.json({ success: true, claim: updated });
 }
-

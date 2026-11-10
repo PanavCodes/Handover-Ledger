@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { config } from "./config";
 import { PersonaRole, PersonaProfile, DEMO_PERSONAS, DEFAULT_WORKSPACE_ID } from "./personas";
 
@@ -70,13 +70,21 @@ export async function getSession(): Promise<SessionData> {
 
 export async function setSessionCookie(persona: PersonaRole, workspaceId: string = DEFAULT_WORKSPACE_ID) {
   const cookieStore = cookies();
+  let isHttps = process.env.VERCEL === "1";
+  try {
+    const proto = headers().get("x-forwarded-proto");
+    if (proto === "https") isHttps = true;
+  } catch {
+    // Fallback outside request header context
+  }
+
   const sessionData: SessionData = { persona, workspaceId };
   const signed = signPayload(JSON.stringify(sessionData));
 
   cookieStore.set(COOKIE_NAME, signed, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps,
     path: "/",
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });

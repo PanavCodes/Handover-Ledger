@@ -34,6 +34,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [withheldCount, setWithheldCount] = useState(0);
 
+  const syncWithheldForCurrentPersona = useCallback(async () => {
+    try {
+      const res = await fetch("/api/claims");
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.withheldCount === "number") {
+          setWithheldCount(data.withheldCount);
+        }
+      }
+    } catch {
+      // Non-fatal
+    }
+  }, []);
+
   const fetchSession = useCallback(async () => {
     try {
       const res = await fetch("/api/me");
@@ -43,12 +57,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           setPersona(data.persona);
         }
       }
+      await syncWithheldForCurrentPersona();
     } catch (err) {
       console.error("Failed to load session:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [syncWithheldForCurrentPersona]);
 
   useEffect(() => {
     fetchSession();
@@ -65,7 +80,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setPersona(data.persona);
-        // Dispatch custom event to notify all components to refetch role-scoped data
+        await syncWithheldForCurrentPersona();
         window.dispatchEvent(new CustomEvent("persona-changed", { detail: { role } }));
       }
     } catch (err) {
@@ -79,10 +94,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       await fetch("/api/demo/reset", { method: "POST" });
-      await switchPersona("lead");
-      window.location.reload();
+      await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ persona: "lead" }),
+      });
+      setPersona(DEMO_PERSONAS.lead);
+      setWithheldCount(0);
+      window.dispatchEvent(new CustomEvent("demo-reset"));
+      window.dispatchEvent(new CustomEvent("persona-changed", { detail: { role: "lead" } }));
     } catch (err) {
       console.error("Failed to reset demo:", err);
+    } finally {
       setLoading(false);
     }
   };

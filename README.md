@@ -5,27 +5,29 @@
 
 [![Next.js 14](https://img.shields.io/badge/Next.js-14.2_App_Router-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict_Mode-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
-[![Vitest](https://img.shields.io/badge/Vitest-23%2F23_Passed-green?style=flat&logo=vitest)](https://vitest.dev/)
-[![Leak Canary](https://img.shields.io/badge/Leak_Canary-0_Leaks_Proven-emerald?style=flat&logo=shield)](https://github.com/)
-[![Audit Chain](https://img.shields.io/badge/Audit_Chain-Head--Anchored_SHA--256-verdigris?style=flat)](https://github.com/)
+[![Vitest](https://img.shields.io/badge/Vitest-28%2F28_Passed-green?style=flat&logo=vitest)](https://vitest.dev/)
+[![Leak Canary](https://img.shields.io/badge/Leak_Canary-16%2F16_Zero_Leaks-emerald?style=flat&logo=shield)](https://github.com/PanavCodes/Handover-Ledger)
+[![Audit Chain](https://img.shields.io/badge/Audit_Chain-Head--Anchored_SHA--256-verdigris?style=flat)](https://github.com/PanavCodes/Handover-Ledger)
 
 ---
 
-## 🚀 Quickstart for Hackathon Judges (3 Steps)
+## Quickstart for Hackathon Judges (3 Steps)
 
-You can launch and evaluate the full application in under 60 seconds with **zero logins or API keys required**:
+Evaluate the full end-to-end handover workflow locally in under 60 seconds with **zero logins or API keys required**:
 
 ```bash
-# 1. Install dependencies
-pnpm install
+# 1. Install dependencies (inside apps/web)
+cd apps/web && npm install --legacy-peer-deps
 
-# 2. Run automated test suite (23/23 tests pass in <500ms)
-pnpm --filter web test
+# 2. Run automated test suite (5 suites, 28/28 tests pass)
+npm test
 
 # 3. Start production build or development server
-pnpm --filter web dev
+npm run build && npm run start
 ```
-Open **`http://localhost:3000`** in your browser. Click **"Open Live Demo"** or navigate directly to **`/demo`** to simulate any of the 4 persona roles in one click.
+Open **`http://localhost:3000/demo`** in an incognito browser window to switch seamlessly across all 4 demo personas in one click.
+
+*(See [docs/Handover-Ledger-Round2-Report.pdf](docs/Handover-Ledger-Round2-Report.pdf) for our complete Round 2 Technical Report with verified screenshots, test metrics, and architecture diagrams.)*
 
 ---
 
@@ -105,49 +107,50 @@ flowchart TD
 
 ---
 
-## 🧪 Automated Test Verification
+## Automated Test Verification
 
-Our automated test suite runs under Vitest in **sub-500ms** and validates all mathematical invariants:
+Our automated test suite runs under Vitest and validates verification, secrecy containment, cryptographic audit integrity, and end-to-end Round 2 workflow invariants:
 
 ```bash
-$ pnpm --filter web test
+$ npm test
 
- ✓ src/tests/audit.test.ts (3 tests)
  ✓ src/tests/verifier.test.ts (8 tests)
- ✓ src/tests/api-integration.test.ts (7 tests)
+ ✓ src/tests/audit.test.ts (3 tests)
  ✓ src/tests/canary.test.ts (5 tests)
+ ✓ src/tests/api-integration.test.ts (7 tests)
+ ✓ src/tests/workflow-e2e.test.ts (5 tests)
 
- Test Files  4 passed (4)
-      Tests  23 passed (23)
-   Duration  448ms
+ Test Files  5 passed (5)
+      Tests  28 passed (28)
 ```
 
-1. **`verifier.test.ts`**: Tests 1:1 whitespace index map, verbatim quote matching, quote snapping, secret regex scrubbing, and rejection diff generation.
-2. **`audit.test.ts`**: Tests SHA-256 block hashing, interior payload tampering detection, and tail-truncation detection via external head anchors.
-3. **`canary.test.ts`**: Tests that `CANARY{...}` tokens planted in restricted sources are never returned to unauthorized personas.
-4. **`api-integration.test.ts`**: End-to-end integration tests verifying persona filtering, document 403 access control, planted conflict flags, and demo state restoration.
+1. **`verifier.test.ts` (8 tests)**: 1:1 whitespace index map, verbatim quote snapping, secret regex scrubbing (`sk-`, `ghp_`, `AKIA`, PEM), and word-level rejection diff generation.
+2. **`audit.test.ts` (3 tests)**: SHA-256 block hashing, interior payload tampering detection, and tail-truncation detection via external head anchors.
+3. **`canary.test.ts` (5 tests)**: Confirms `CANARY-...` tokens in restricted and confidential sources never leak to unauthorized personas across 16 matrix checks (`4 personas × 4 surfaces`).
+4. **`api-integration.test.ts` (7 tests)**: Role-scoped claim filtering, document 403 isolation, planted conflict preservation, roadmap scoping, and clean demo state reset.
+5. **`workflow-e2e.test.ts` (5 tests)**: Prompt-injection immunity + general extraction, Gap-Driven Exit Interview closure superseding `missing` claims, deterministic cross-document conflict detection, cryptographic leaver/successor acknowledgements, and role-scoped rejection filtering.
 
 ---
 
-## 👥 Demo Personas Available at `/demo`
+## Demo Personas Available at `/demo`
 
-- **Dr. Meera Iyer (Project Lead & Faculty Advisor)**: Unrestricted access across all 3 sensitivity tiers (team, restricted, confidential). Approves claims, triages planted contradictions, and verifies cryptographic block logs.
-- **Rahul Mehta (Departing Owner — Firmware & RF)**: Captures tacit knowledge, logs undocumented boot jumpers, and signs the Leaver Approval Gate.
-- **Ananya Rao (Successor — Core Dev)**: Technical successor receiving the 30-day technical plan. Confidential coordinator finances and sponsor contracts are cryptographically withheld.
-- **Kabir Shah (Operations Coordinator)**: Inherits logistics, vendor contacts, and schedules. Core telemetry encryption keys and low-level firmware docs are cryptographically withheld.
+- **Dr. Meera Iyer (Project Lead & Faculty Advisor)**: Unrestricted access across all 3 sensitivity tiers (`team`, `restricted`, `confidential`). Approves/edits claims, triages conflicts, previews role scopes (`View-As`), and verifies the SHA-256 audit chain.
+- **Rahul Mehta (Departing Owner — Firmware & RF)**: Captures tacit notes, uploads labeled docs (enforced by HTTP 422 guard), answers Gap-Driven Exit Interview prompts at `/interview`, and signs the Leaver Attestation approval gate.
+- **Ananya Rao (Successor — Core Dev)**: Technical successor receiving engineering decisions, CANbus/STM32 procedures, and the Core Dev 30-day transition plan, plus Formal Successor Receipt signing. Coordinator financials and confidential faculty notes are omitted server-side.
+- **Kabir Shah (Operations Coordinator)**: Operations successor inheriting AeroTech sponsor milestones, ServoWorks vendor contacts, and logistics schedules, plus Formal Successor Receipt signing. Core Dev restricted hardware notes and faculty grant accounts are omitted server-side.
 
 ---
 
-## 📝 Round 2 Submission Answers (Summary)
+## Round 2 Summary & Roadmap
 
-1. **Working Project Link:** `/demo` (Instant 1-click persona entry, no sign-in required).
-2. **Source Code:** Monorepo with full documentation in `docs/` and unit tests in `apps/web/src/tests/`.
-3. **Completed Features:** All 8 Must-Haves, 3 Should-Haves, plus all 6 WOW features (Evidence Lens, Leak Canary, Constellation, Readiness Dial, Audit Chain, Agent Export).
-4. **Architecture Changes:** Consolidated into full-stack Next.js 14 App Router serverless deployment to guarantee zero cold starts and instant responsiveness for judges.
+1. **Working Project Entry:** `/demo` (Zero-login instant 4-persona evaluation + `/interview`, `/capture`, `/ledger`, `/brief`, `/constellation`, `/canary`, `/audit`).
+2. **Source Repository:** Public Next.js 14 full-stack app in `apps/web/`, Supabase RLS schema in `supabase/migrations/0001_init.sql`, updated Round 2 report in `docs/Handover-Ledger-Round2-Report.pdf`, and 28 Vitest tests in `apps/web/src/tests/`.
+3. **Completed Functional Workflow:** Source ingest with mandatory fail-closed labeling (`HTTP 422`), live GitHub repo & commit ownership sync, 1:1 Evidence Lens + hallucination/secret guard diffing, Gap-Driven Exit Interview loop (`/interview`), cross-document contradiction resolution + revision history (`v1..vN`), 16-check Leak Canary matrix, head-anchored SHA-256 audit ledger, Leaver & Successor cryptographic sign-off receipts, and role-scoped `HANDOVER.md` / Markdown / JSON exports.
+4. **Architecture Changes vs. Round 1 Blueprint:** Consolidated the planned FastAPI + Render workers into Next.js 14 serverless route handlers with batched extraction and an offline deterministic extractor alongside Claude Sonnet 4.5 tool use, eliminated login barriers via HMAC-signed demo persona cookies + `lib/access.ts`, and pulled forward the Exit Interview, conflict detector, multi-role Leak Canary, and cryptographic acknowledgements ahead of schedule.
 5. **Round 3 Roadmap:**
-   - Interactive LLM-powered leaver gap-interview loop.
-   - Dual-connection Postgres RLS (db_user vs. db_admin) with pgvector semantic similarity search.
-   - Real-time Slack/Jira live ingestion sidecars for continuous tacit knowledge capture.
+   - Production Supabase Auth / SSO replacing demo cookies with dual-connection Postgres RLS (`db_user` / `db_admin`) and `pgvector` retrieval.
+   - Continuous passive capture connectors (Slack, Jira/Linear, GitHub webhooks) recording tacit decisions as work happens.
+   - Multi-hop LLM contradiction synthesis across >3 sources and OCR-aware PII/secret redaction across uploaded PDFs and binaries.
 
 ---
 

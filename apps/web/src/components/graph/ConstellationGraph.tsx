@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useTheme } from "next-themes";
 import {
   ReactFlow,
   Background,
@@ -9,29 +11,60 @@ import {
   Node,
   Edge,
   MarkerType,
-  Position,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
   AlertTriangle,
   UserCheck,
   UserX,
-  Layers,
-  Cpu,
   Radio,
+  Cpu,
   BatteryCharging,
   Eye,
   Calendar,
   ShieldAlert,
+  ArrowRight,
 } from "lucide-react";
+import { Claim } from "@/lib/types";
 
 export function ConstellationGraph() {
+  const { resolvedTheme } = useTheme();
+  const isLight = resolvedTheme === "light";
   const [rahulDeparted, setRahulDeparted] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [liveClaims, setLiveClaims] = useState<Claim[]>([]);
+
+  const fetchClaims = useCallback(async () => {
+    try {
+      const res = await fetch("/api/claims");
+      if (res.ok) {
+        const data = await res.json();
+        setLiveClaims(data.claims || []);
+      }
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClaims();
+    const refresh = () => fetchClaims();
+    window.addEventListener("persona-changed", refresh);
+    window.addEventListener("demo-reset", refresh);
+    return () => {
+      window.removeEventListener("persona-changed", refresh);
+      window.removeEventListener("demo-reset", refresh);
+    };
+  }, [fetchClaims]);
+
+  const dynamicGitOwners = useMemo(
+    () => liveClaims.filter((c) => c.origin === "git_derived" && c.type === "owner"),
+    [liveClaims]
+  );
 
   // Define Nodes
   const initialNodes: Node[] = useMemo(() => {
-    return [
+    const baseNodes: Node[] = [
       // People Nodes
       {
         id: "p-rahul",
@@ -114,7 +147,7 @@ export function ConstellationGraph() {
           subsystem: "Firmware & Comms",
           busFactor: rahulDeparted ? 0 : 1,
           orphaned: rahulDeparted,
-          files: ["firmware/telemetry/main.c", "scripts/rf_listen.py"],
+          files: ["docs/architecture.md", "ops/crontab.txt"],
           icon: Radio,
         },
         style: {
@@ -135,7 +168,7 @@ export function ConstellationGraph() {
           subsystem: "Actuation & Power",
           busFactor: rahulDeparted ? 1 : 2,
           orphaned: false,
-          files: ["hardware/canbus.c", "docs/can_protocol.md"],
+          files: ["firmware/can_config.h", "firmware/README.md"],
           icon: Cpu,
         },
         style: {
@@ -191,11 +224,11 @@ export function ConstellationGraph() {
         id: "c-scheduler",
         position: { x: 740, y: 380 },
         data: {
-          label: "Mission Scheduler & Logs",
+          label: "Mission Scheduler & Vendors",
           subsystem: "Ground Control",
-          busFactor: 3,
+          busFactor: 2,
           orphaned: false,
-          files: ["ground_station/scheduler.py"],
+          files: ["tasks/board-export.csv"],
           icon: Calendar,
         },
         style: {
@@ -208,11 +241,36 @@ export function ConstellationGraph() {
         },
       },
     ];
-  }, [rahulDeparted]);
+
+    // Append up to 3 dynamically ingested GitHub subsystem nodes if synced
+    dynamicGitOwners.slice(0, 3).forEach((dynClaim, idx) => {
+      baseNodes.push({
+        id: `c-dyn-${dynClaim.id}`,
+        position: { x: 740, y: 20 + idx * 90 },
+        data: {
+          label: dynClaim.title,
+          subsystem: `Git Synced (${dynClaim.subject_key})`,
+          busFactor: 1,
+          orphaned: false,
+          files: dynClaim.citations?.map((c) => c.document_path || "git commit") || [],
+        },
+        style: {
+          background: "#0f172a",
+          color: "#e2e8f0",
+          border: "2px solid #06b6d4",
+          borderRadius: "12px",
+          padding: "12px",
+          width: 250,
+        },
+      });
+    });
+
+    return baseNodes;
+  }, [rahulDeparted, dynamicGitOwners]);
 
   // Define Edges
   const initialEdges: Edge[] = useMemo(() => {
-    return [
+    const edges: Edge[] = [
       {
         id: "e-rahul-telemetry",
         source: "p-rahul",
@@ -278,23 +336,36 @@ export function ConstellationGraph() {
         markerEnd: { type: MarkerType.ArrowClosed },
       },
     ];
-  }, [rahulDeparted]);
+
+    dynamicGitOwners.slice(0, 3).forEach((dynClaim) => {
+      edges.push({
+        id: `e-dyn-${dynClaim.id}`,
+        source: "p-meera",
+        target: `c-dyn-${dynClaim.id}`,
+        animated: true,
+        style: { stroke: "#06b6d4", strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed },
+      });
+    });
+
+    return edges;
+  }, [rahulDeparted, dynamicGitOwners]);
 
   return (
     <div className="space-y-6">
       {/* Top Controls Bar */}
       <div className="p-6 rounded-2xl bg-card border border-border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-serif text-xl font-bold text-foreground">
-              Knowledge Constellation & Bus-Factor Analyzer
+              Knowledge Constellation &amp; Bus-Factor Analyzer
             </h2>
             <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-primary/20 text-primary font-semibold border border-primary/30">
-              Interactive Topology
+              {liveClaims.length} Live Ledger Claims
             </span>
           </div>
           <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
-            Git-derived knowledge map detecting single points of failure, maintainer silos, and orphaned codebases before departure.
+            Git-derived subsystem map plus live synced GitHub ownership nodes detecting maintainer silos and orphaned components before departure.
           </p>
         </div>
 
@@ -321,6 +392,27 @@ export function ConstellationGraph() {
         </button>
       </div>
 
+      {/* Orphan Alert Banner when Rahul Departs (placed outside canvas so zero nodes are obscured) */}
+      {rahulDeparted && (
+        <div className="p-4 rounded-2xl bg-rose-950/95 border border-rose-500/50 shadow-lg text-rose-100 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in-0 duration-200">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-rose-300 font-bold uppercase font-mono tracking-wider">
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              CRITICAL: Bus Factor = 0 Detected!
+            </div>
+            <p className="leading-relaxed">
+              <strong>Telemetry &amp; RF Pipeline</strong> is completely orphaned. Rahul Mehta was the sole maintainer.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 px-3 py-2 bg-rose-900/60 rounded-xl border border-rose-500/40 font-mono text-[11px] shrink-0">
+            <span>Assign custody to Ananya Rao</span>
+            <Link href="/brief" className="text-amber-300 hover:underline inline-flex items-center gap-1 font-semibold">
+              Open Brief <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Main Canvas Area */}
       <div className="relative w-full h-[600px] rounded-2xl border border-border bg-card/40 overflow-hidden shadow-inner">
         <ReactFlow
@@ -328,32 +420,24 @@ export function ConstellationGraph() {
           edges={initialEdges}
           onNodeClick={(_, node) => setSelectedNode(node)}
           fitView
+          colorMode={isLight ? "light" : "dark"}
           attributionPosition="bottom-right"
         >
           <Background color="#71717a" gap={20} size={1} />
           <Controls />
           <MiniMap
+            bgColor={isLight ? "#f4f4f5" : "#09090b"}
+            maskColor={isLight ? "rgba(244, 244, 245, 0.72)" : "rgba(9, 9, 11, 0.72)"}
             nodeStrokeColor={(n) => (n.id.startsWith("p-") ? "#3b82f6" : "#f59e0b")}
-            nodeColor={(n) => (n.id === "c-telemetry" && rahulDeparted ? "#ef4444" : "#27272a")}
+            nodeColor={(n) => (n.id === "c-telemetry" && rahulDeparted ? "#ef4444" : isLight ? "#cbd5e1" : "#27272a")}
             nodeBorderRadius={6}
+            style={{
+              backgroundColor: isLight ? "#f4f4f5" : "#09090b",
+              border: isLight ? "1px solid #d4d4d8" : "1px solid #27272a",
+              borderRadius: "10px",
+            }}
           />
         </ReactFlow>
-
-        {/* Floating Orphan Alert Banner when Rahul Departs */}
-        {rahulDeparted && (
-          <div className="absolute top-4 left-4 right-4 md:right-auto md:max-w-md p-4 rounded-xl bg-rose-950/90 border border-rose-500/50 backdrop-blur shadow-2xl text-rose-100 text-xs space-y-2 animate-in fade-in-0 duration-200">
-            <div className="flex items-center gap-2 text-rose-300 font-bold uppercase font-mono tracking-wider">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
-              CRITICAL: Bus Factor = 0 Detected!
-            </div>
-            <p className="leading-relaxed">
-              <strong>Telemetry & RF Pipeline</strong> is now completely orphaned. Rahul Mehta was the sole maintainer (100% commit share).
-            </p>
-            <div className="p-2 bg-rose-900/60 rounded border border-rose-500/40 font-mono text-[11px]">
-              Recommendation: Handover priority assigned to Ananya Rao (Successor: Core Dev).
-            </div>
-          </div>
-        )}
 
         {/* Selected Node Inspector Drawer */}
         {selectedNode && (
@@ -383,8 +467,8 @@ export function ConstellationGraph() {
                     selectedNode.data.busFactor === 0
                       ? "text-rose-500"
                       : selectedNode.data.busFactor === 1
-                      ? "text-amber-500"
-                      : "text-emerald-500"
+                        ? "text-amber-500"
+                        : "text-emerald-500"
                   }`}
                 >
                   {selectedNode.data.busFactor} maintainer(s)
@@ -392,7 +476,7 @@ export function ConstellationGraph() {
               </div>
             )}
 
-            {selectedNode.data.files && (
+            {selectedNode.data.files && selectedNode.data.files.length > 0 && (
               <div className="space-y-1">
                 <span className="text-muted-foreground font-mono text-[10px] block">
                   Associated Code Assets:
@@ -406,6 +490,14 @@ export function ConstellationGraph() {
                 </ul>
               </div>
             )}
+
+            <Link
+              href="/ledger"
+              className="inline-flex items-center gap-1 text-primary hover:underline font-semibold pt-1"
+            >
+              <span>Inspect Subsystem Claims in Ledger</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
         )}
       </div>

@@ -32,7 +32,9 @@ const SMART_CHAR_MAP: Record<string, string> = {
 // Secret patterns to prevent exposing raw credentials in citations
 const SECRET_PATTERNS = [
   /ghp_[A-Za-z0-9_]{20,}/i,
+  /AKIA[0-9A-Z]{16}/,
   /sk-ant-[A-Za-z0-9_\-]{20,}/i,
+  /sk-[A-Za-z0-9]{20,}/,
   /Bearer\s+[A-Za-z0-9_\-\.]{20,}/i,
   /-----BEGIN\s+(RSA|OPENSSH|EC|PRIVATE)\s+KEY-----/i,
   /xox[baprs]-[A-Za-z0-9\-]{20,}/i,
