@@ -6,14 +6,14 @@ Deadline: **Wed 11 Nov, 10:00 AM IST, strict.** Submit at least 3 hours early.
 
 ## Pre-flight Checklist
 - [x] Incognito entry works with zero login (`/demo` & `/`), default Lead session + instant 4-persona cookie persistence across page reload.
-- [x] Source repository is updated cleanly; README includes 3-step Quickstart; updated Round 2 PDF generated at `docs/Handover-Ledger-Round2-Report.pdf`.
-- [ ] `[VERIFY DEPLOYED URL]` Deploy `apps/web` to Vercel (disable Deployment Protection so incognito works cleanly) & set `AUTH_SECRET` env var.
-- [ ] `[VERIFY PUBLIC PDF LINK]` Upload `docs/Handover-Ledger-Round2-Report.pdf` to Google Drive with **"Anyone with the link can view"** (or link GitHub blob URL if preferred) and test in incognito.
+- [x] Source repository is updated cleanly; README includes live demo + 3-step Quickstart; updated 6-page Round 2 PDF generated at `docs/Handover-Ledger-Round2-Report.pdf`.
+- [x] Live Vercel deployment (`https://web-blue-delta-58.vercel.app/demo`) verified in incognito with zero Deployment Protection wall, HTTP 200 across all 8 routes, `16/16` live Leak Canary sweep, intact SHA-256 audit chain, and live Secret Guard capture check.
+- [ ] `[VERIFY PUBLIC PDF LINK]` Upload `docs/Handover-Ledger-Round2-Report.pdf` to Google Drive with **"Anyone with the link can view"** (or use the GitHub PDF link) and test in incognito.
 
 ---
 
 ## 1. Working project link
-`https://<your-vercel-domain>.vercel.app/demo` **[VERIFY DEPLOYED URL after `vercel --prod`]**
+`https://web-blue-delta-58.vercel.app/demo` *(verified live in incognito)*
 
 One-line helper note to include alongside link:
 > Click any persona to start with zero login required. Suggested path: **Dr. Meera (Dashboard `/`) &rarr; Ingest (`/capture`) &rarr; Exit Interview (`/interview` as Rahul) &rarr; Evidence Lens &amp; Conflict Resolution (`/ledger`) &rarr; Handover Brief + View-As Kabir (`/brief`) &rarr; Leak Canary &amp; Audit Chain (`/canary`, `/audit`)**.
