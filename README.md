@@ -11,11 +11,9 @@
 
 ---
 
-## Quickstart for Hackathon Judges
+## Quickstart for Hackathon Judges (3 Steps)
 
-**Live Zero-Login Demo:** **[https://web-blue-delta-58.vercel.app/demo](https://web-blue-delta-58.vercel.app/demo)** *(opens directly in incognito with instant 4-persona switching; no login or API keys required)*
-
-Or evaluate the full end-to-end handover workflow locally in under 60 seconds:
+Evaluate the full end-to-end handover workflow locally in under 60 seconds with **zero logins or API keys required**:
 
 ```bash
 # 1. Install dependencies (inside apps/web)
